@@ -1554,8 +1554,8 @@ func (n *ovn) startUplinkPort() error {
 		return fmt.Errorf("Failed loading uplink network %q: %w", n.config["network"], err)
 	}
 
-	// Uplink will not do anything 
-	if n.config["parent"] == "none" && uplinkNet.Type() == "physical"{
+	// Uplink will not do anything
+	if n.config["parent"] == "none" && uplinkNet.Type() == "physical" {
 		return nil
 	}
 
@@ -3293,6 +3293,12 @@ func (n *ovn) ensureNetworkPortGroup(projectID int64) error {
 // The chassis priority value is a stable-random value derived from chassis group name and node ID. This is so we
 // don't end up using the same chassis for the primary uplink chassis for all OVN networks in a cluster.
 func (n *ovn) addChassisGroupEntry() error {
+	// Skip adding ourselves if parent=none
+	if n.config["parent"] == "none" {
+		n.logger.Debug("Skipping chassis group entry: parent=none")
+		return nil
+	}
+
 	// Get local chassis ID for chassis group.
 	vswitch, err := n.state.OVS()
 	if err != nil {
@@ -3357,6 +3363,12 @@ func (n *ovn) addChassisGroupEntry() error {
 
 // deleteChassisGroupEntry deletes an entry for the local OVS chassis from the OVN logical network's chassis group.
 func (n *ovn) deleteChassisGroupEntry() error {
+	// Skip deleting chassis group entry if parent=none
+	if n.config["parent"] == "none" {
+		n.logger.Debug("Skipping chassis group entry removal: parent=none")
+		return nil
+	}
+
 	// Remove local chassis from chassis group.
 	vswitch, err := n.state.OVS()
 	if err != nil {
@@ -3508,13 +3520,13 @@ func (n *ovn) chassisEnabled(ctx context.Context, tx *db.ClusterTx) (bool, error
 	if n.config["network"] == "none" {
 		return false, nil
 	}
-	
+
 	uplinkNet, err := LoadByName(n.state, api.ProjectDefaultName, n.config["network"])
 	if err != nil {
 		return false, fmt.Errorf("Failed loading uplink network %q: %w", n.config["network"], err)
 	}
 
-	if n.config["parent"] == "none" && uplinkNet.Type() == "physical"{
+	if n.config["parent"] == "none" && uplinkNet.Type() == "physical" {
 		return false, nil
 	}
 
